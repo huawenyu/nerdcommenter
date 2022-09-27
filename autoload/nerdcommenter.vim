@@ -1223,13 +1223,42 @@ function! nerdcommenter#Comment(mode, type) range abort
         call s:InvertComment(firstLine, lastLine)
 
     elseif a:type ==? 'Sexy'
-        try
-            call s:CommentLinesSexy(firstLine, lastLine)
-        catch /NERDCommenter.Delimiters/
-            call s:CommentLines(forceNested, g:NERDDefaultAlign, firstLine, lastLine)
-        catch /NERDCommenter.Nesting/
-            call s:NerdEcho('Sexy comment aborted. Nested sexy cannot be nested', 0)
-        endtry
+        if g:NERDToggleCheckAllLines ==# 0
+          let theLine = getline(firstLine)
+          if s:IsInSexyComment(firstLine) || s:IsCommentedFromStartOfLine(s:Left(), theLine) || s:IsCommentedFromStartOfLine(s:Left({'alt': 1}), theLine)
+              call s:UncommentLines(firstLine, lastLine)
+          else
+              try
+                  call s:CommentLinesSexy(firstLine, lastLine)
+              catch /NERDCommenter.Delimiters/
+                  call s:CommentLines(forceNested, g:NERDDefaultAlign, firstLine, lastLine)
+              catch /NERDCommenter.Nesting/
+                  call s:NerdEcho('Sexy comment aborted. Nested sexy cannot be nested', 0)
+              endtry
+          endif
+        else
+          let l:commentAllLines = 0
+          for i in range(firstLine, lastLine)
+            let theLine = getline(i)
+            " if have one line no comment(not include blank/whitespace-only lines), then comment all lines
+            if theLine =~# '\S\+' && !s:IsInSexyComment(firstLine) && !s:IsCommentedFromStartOfLine(s:Left(), theLine) && !s:IsCommentedFromStartOfLine(s:Left({'alt': 1}), theLine)
+              let l:commentAllLines = 1
+              break
+            else
+          endif
+          endfor
+          if l:commentAllLines ==# 1
+              try
+                  call s:CommentLinesSexy(firstLine, lastLine)
+              catch /NERDCommenter.Delimiters/
+                  call s:CommentLines(forceNested, g:NERDDefaultAlign, firstLine, lastLine)
+              catch /NERDCommenter.Nesting/
+                  call s:NerdEcho('Sexy comment aborted. Nested sexy cannot be nested', 0)
+              endtry
+          else
+            call s:UncommentLines(firstLine, lastLine)
+          endif
+        endif
 
     elseif a:type ==? 'Toggle'
         if g:NERDToggleCheckAllLines ==# 0
